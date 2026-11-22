@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F8FAFC;
+  --surface: #F1F5F9;
+  --card: #FFFFFF;
+  --primary: #0B4F6C;
+  --primary-hover: #083B52;
+  --accent: #D97706;
+  --text-main: #0F172A;
+  --text-muted: #475569;
+  --border-hairline: #E2E8F0;
+}
+
+@layer base {
+  html {
+    font-family: 'IBM Plex Sans Arabic', system-ui, -apple-system, sans-serif;
+    background-color: var(--background);
+    color: var(--text-main);
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Cairo', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+    text-wrap: balance;
+  }
+
+  .font-mono-num {
+    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,491 @@
+{
+  "entities": {
+    "Place": {
+      "title": "Verified Alexandria Transit Place",
+      "description": "A verified Alexandria neighborhood, pickup point, market, or historical stand approved through hybrid AI/admin verification.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "minLength": 2,
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "enum": ["neighborhood", "pickup_point", "market", "historical_stand"]
+        },
+        "district": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "landmarkHint": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "sourceNote": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "sourceSuggestionId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "verifiedByUid": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128
+        },
+        "verifiedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "category",
+        "district",
+        "verifiedByUid",
+        "verifiedAt",
+        "isActive"
+      ]
+    },
+    "Route": {
+      "title": "Verified Alexandria Transit Route",
+      "description": "A published transit route built strictly from ordered verified places. Name and direction are auto-generated from the first and last stop.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "minLength": 2,
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 200
+        },
+        "direction": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 200
+        },
+        "originPlaceId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "destinationPlaceId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "stopIds": {
+          "type": "array"
+        },
+        "stopNames": {
+          "type": "array"
+        },
+        "fareEgp": {
+          "type": "number"
+        },
+        "estimatedMinutes": {
+          "type": "number"
+        },
+        "vehicleType": {
+          "type": "string",
+          "enum": ["microbus", "service", "tram", "bus"]
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "verifiedByUid": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128
+        },
+        "publishedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "direction",
+        "originPlaceId",
+        "destinationPlaceId",
+        "stopIds",
+        "stopNames",
+        "fareEgp",
+        "estimatedMinutes",
+        "vehicleType",
+        "isActive",
+        "verifiedByUid",
+        "publishedAt"
+      ]
+    },
+    "PlaceSuggestion": {
+      "title": "Place Suggestion with AI Audit Metadata",
+      "description": "A place suggestion (including the 60 initial Alexandria places) with optional AI evaluation scores for hybrid approval.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "minLength": 2,
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "enum": ["neighborhood", "pickup_point", "market", "historical_stand"]
+        },
+        "district": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "landmarkHint": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "field_check", "approved", "rejected"]
+        },
+        "sourceReference": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "fieldNotes": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "reviewNote": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "aiConfidence": {
+          "type": "number"
+        },
+        "aiVerdict": {
+          "type": "string",
+          "enum": ["auto_approve", "field_check", "needs_review"]
+        },
+        "aiReasoning": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "submittedByUid": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128
+        },
+        "isInitialSeed": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "category",
+        "district",
+        "status",
+        "submittedByUid",
+        "isInitialSeed",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "RouteSuggestion": {
+      "title": "Route Suggestion with AI Audit Metadata",
+      "description": "A user-suggested route built from verified places with optional AI audit scores.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "minLength": 2,
+          "maxLength": 128
+        },
+        "generatedName": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 200
+        },
+        "generatedDirection": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 200
+        },
+        "stopIds": {
+          "type": "array"
+        },
+        "stopNames": {
+          "type": "array"
+        },
+        "fareEgp": {
+          "type": "number"
+        },
+        "estimatedMinutes": {
+          "type": "number"
+        },
+        "vehicleType": {
+          "type": "string",
+          "enum": ["microbus", "service", "tram", "bus"]
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "field_check", "approved", "rejected"]
+        },
+        "reviewNote": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "aiConfidence": {
+          "type": "number"
+        },
+        "aiVerdict": {
+          "type": "string",
+          "enum": ["auto_approve", "field_check", "needs_review"]
+        },
+        "aiReasoning": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "submittedByUid": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "generatedName",
+        "generatedDirection",
+        "stopIds",
+        "stopNames",
+        "fareEgp",
+        "estimatedMinutes",
+        "vehicleType",
+        "status",
+        "submittedByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Report": {
+      "title": "Transit Field Report",
+      "description": "A rider report about fare changes, route detours, or stopped service.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "minLength": 2,
+          "maxLength": 128
+        },
+        "targetType": {
+          "type": "string",
+          "enum": ["route", "place", "general"]
+        },
+        "targetId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "targetLabel": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "reportType": {
+          "type": "string",
+          "enum": ["fare_change", "route_change", "service_stop", "data_issue"]
+        },
+        "details": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 1000
+        },
+        "suggestedFareEgp": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "in_review", "resolved", "dismissed"]
+        },
+        "reviewNote": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "submittedByUid": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "targetType",
+        "reportType",
+        "details",
+        "status",
+        "submittedByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminUser": {
+      "title": "Mashroei Admin Member",
+      "description": "Authorized reviewer in the Mashroei team.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 180
+        },
+        "addedByUid": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "displayName", "email", "createdAt"]
+    },
+    "PublicStats": {
+      "title": "Public Network Verification Summary",
+      "description": "Non-PII aggregate counts for public display.",
+      "type": "object",
+      "properties": {
+        "verifiedPlacesCount": {
+          "type": "number"
+        },
+        "publishedRoutesCount": {
+          "type": "number"
+        },
+        "pendingSuggestionsCount": {
+          "type": "number"
+        },
+        "fieldCheckCount": {
+          "type": "number"
+        },
+        "initialSeedApplied": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "verifiedPlacesCount",
+        "publishedRoutesCount",
+        "pendingSuggestionsCount",
+        "fieldCheckCount",
+        "initialSeedApplied",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/places/{placeId}": {
+      "schema": { "$ref": "#/entities/Place" },
+      "description": "Verified Alexandria places and stops used by public trip search and route builder."
+    },
+    "/routes/{routeId}": {
+      "schema": { "$ref": "#/entities/Route" },
+      "description": "Verified and published transit routes displayed in public search."
+    },
+    "/place_suggestions/{suggestionId}": {
+      "schema": { "$ref": "#/entities/PlaceSuggestion" },
+      "description": "Place suggestions (including the 60 initial Alexandria places) with AI evaluation metadata."
+    },
+    "/route_suggestions/{suggestionId}": {
+      "schema": { "$ref": "#/entities/RouteSuggestion" },
+      "description": "Route suggestions built from verified places with AI evaluation metadata."
+    },
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/Report" },
+      "description": "Rider reports regarding fares, route adjustments, or stopped service."
+    },
+    "/admins/{uid}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Team admin accounts authorized to manage hybrid AI reviews and publish places/routes."
+    },
+    "/app_meta/{docId}": {
+      "schema": { "$ref": "#/entities/PublicStats" },
+      "description": "Aggregate public statistics and seed state marker."
+    }
+  }
+}

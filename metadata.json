@@ -1,0 +1,6 @@
+{
+  "name": "مشروعي — دليل مواصلات إسكندرية",
+  "description": "دليل مواصلات الإسكندرية الموثق باللغة العربية مع البحث عن الخطوط المعتمدة والتبديلات وحاسبة الأجرة والمساعد الذكي ونظام الاعتماد الهجين.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

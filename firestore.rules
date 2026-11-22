@@ -1,0 +1,380 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Primitive Helpers ---
+    function isValidId(id) {
+      return id is string && id.size() >= 2 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'eyadkotb425@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerifiedUser() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidCategory(cat) {
+      return cat in ['neighborhood', 'pickup_point', 'market', 'historical_stand'];
+    }
+
+    function isValidVehicleType(vt) {
+      return vt in ['microbus', 'service', 'tram', 'bus'];
+    }
+
+    function isValidSuggestionStatus(st) {
+      return st in ['pending', 'field_check', 'approved', 'rejected'];
+    }
+
+    function isValidAiVerdict(v) {
+      return v in ['auto_approve', 'field_check', 'needs_review'];
+    }
+
+    function isValidReportType(rt) {
+      return rt in ['fare_change', 'route_change', 'service_stop', 'data_issue'];
+    }
+
+    function isValidReportStatus(st) {
+      return st in ['open', 'in_review', 'resolved', 'dismissed'];
+    }
+
+    function isValidOptionalCoords(data) {
+      return (!('lat' in data) || (data.lat is number && data.lat >= 29.5 && data.lat <= 32.0)) &&
+        (!('lng' in data) || (data.lng is number && data.lng >= 28.5 && data.lng <= 31.5));
+    }
+
+    // --- Entity Validation Blueprints ---
+    function isValidPlace(data) {
+      return data.keys().hasAll([
+          'id', 'name', 'category', 'district',
+          'verifiedByUid', 'verifiedAt', 'isActive'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'name', 'category', 'district', 'landmarkHint', 'lat', 'lng',
+          'sourceNote', 'sourceSuggestionId', 'verifiedByUid', 'verifiedAt', 'isActive'
+        ]) &&
+        isValidId(data.id) &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 120 &&
+        isValidCategory(data.category) &&
+        data.district is string && data.district.size() >= 2 && data.district.size() <= 100 &&
+        (!('landmarkHint' in data) || (data.landmarkHint is string && data.landmarkHint.size() <= 200)) &&
+        isValidOptionalCoords(data) &&
+        (!('sourceNote' in data) || (data.sourceNote is string && data.sourceNote.size() <= 500)) &&
+        (!('sourceSuggestionId' in data) || (data.sourceSuggestionId is string && data.sourceSuggestionId.size() <= 128)) &&
+        data.verifiedByUid is string && data.verifiedByUid.size() >= 2 && data.verifiedByUid.size() <= 128 &&
+        data.verifiedAt is timestamp &&
+        data.isActive is bool;
+    }
+
+    function isValidRoute(data) {
+      return data.keys().hasAll([
+          'id', 'name', 'direction', 'originPlaceId', 'destinationPlaceId',
+          'stopIds', 'stopNames', 'fareEgp', 'estimatedMinutes',
+          'vehicleType', 'isActive', 'verifiedByUid', 'publishedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'name', 'direction', 'originPlaceId', 'destinationPlaceId',
+          'stopIds', 'stopNames', 'fareEgp', 'estimatedMinutes',
+          'vehicleType', 'notes', 'isActive', 'verifiedByUid', 'publishedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.name is string && data.name.size() >= 4 && data.name.size() <= 200 &&
+        data.direction is string && data.direction.size() >= 4 && data.direction.size() <= 200 &&
+        isValidId(data.originPlaceId) &&
+        isValidId(data.destinationPlaceId) &&
+        data.stopIds is list && data.stopIds.size() >= 2 && data.stopIds.size() <= 25 &&
+        data.stopIds[0] is string && data.stopIds[0] == data.originPlaceId &&
+        data.stopNames is list && data.stopNames.size() == data.stopIds.size() &&
+        data.stopNames[0] is string && data.stopNames[0].size() <= 120 &&
+        data.fareEgp is number && data.fareEgp >= 1 && data.fareEgp <= 500 &&
+        data.estimatedMinutes is number && data.estimatedMinutes >= 1 && data.estimatedMinutes <= 300 &&
+        isValidVehicleType(data.vehicleType) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 500)) &&
+        data.isActive is bool &&
+        data.verifiedByUid is string && data.verifiedByUid.size() >= 2 && data.verifiedByUid.size() <= 128 &&
+        data.publishedAt is timestamp;
+    }
+
+    function isValidPlaceSuggestion(data) {
+      return data.keys().hasAll([
+          'id', 'name', 'category', 'district',
+          'status', 'submittedByUid', 'isInitialSeed', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'name', 'category', 'district', 'landmarkHint', 'lat', 'lng',
+          'status', 'sourceReference', 'fieldNotes', 'reviewNote',
+          'aiConfidence', 'aiVerdict', 'aiReasoning',
+          'submittedByUid', 'isInitialSeed', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 120 &&
+        isValidCategory(data.category) &&
+        data.district is string && data.district.size() >= 2 && data.district.size() <= 100 &&
+        (!('landmarkHint' in data) || (data.landmarkHint is string && data.landmarkHint.size() <= 200)) &&
+        isValidOptionalCoords(data) &&
+        isValidSuggestionStatus(data.status) &&
+        (!('sourceReference' in data) || (data.sourceReference is string && data.sourceReference.size() <= 500)) &&
+        (!('fieldNotes' in data) || (data.fieldNotes is string && data.fieldNotes.size() <= 500)) &&
+        (!('reviewNote' in data) || (data.reviewNote is string && data.reviewNote.size() <= 500)) &&
+        (!('aiConfidence' in data) || (data.aiConfidence is number && data.aiConfidence >= 0 && data.aiConfidence <= 100)) &&
+        (!('aiVerdict' in data) || isValidAiVerdict(data.aiVerdict)) &&
+        (!('aiReasoning' in data) || (data.aiReasoning is string && data.aiReasoning.size() <= 500)) &&
+        data.submittedByUid is string && data.submittedByUid.size() >= 2 && data.submittedByUid.size() <= 128 &&
+        data.isInitialSeed is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidRouteSuggestion(data) {
+      return data.keys().hasAll([
+          'id', 'generatedName', 'generatedDirection', 'stopIds', 'stopNames',
+          'fareEgp', 'estimatedMinutes', 'vehicleType', 'status',
+          'submittedByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'generatedName', 'generatedDirection', 'stopIds', 'stopNames',
+          'fareEgp', 'estimatedMinutes', 'vehicleType', 'notes', 'status',
+          'reviewNote', 'aiConfidence', 'aiVerdict', 'aiReasoning',
+          'submittedByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.generatedName is string && data.generatedName.size() >= 4 && data.generatedName.size() <= 200 &&
+        data.generatedDirection is string && data.generatedDirection.size() >= 4 && data.generatedDirection.size() <= 200 &&
+        data.stopIds is list && data.stopIds.size() >= 2 && data.stopIds.size() <= 25 &&
+        data.stopIds[0] is string &&
+        data.stopNames is list && data.stopNames.size() == data.stopIds.size() &&
+        data.stopNames[0] is string && data.stopNames[0].size() <= 120 &&
+        data.fareEgp is number && data.fareEgp >= 1 && data.fareEgp <= 500 &&
+        data.estimatedMinutes is number && data.estimatedMinutes >= 1 && data.estimatedMinutes <= 300 &&
+        isValidVehicleType(data.vehicleType) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 500)) &&
+        isValidSuggestionStatus(data.status) &&
+        (!('reviewNote' in data) || (data.reviewNote is string && data.reviewNote.size() <= 500)) &&
+        (!('aiConfidence' in data) || (data.aiConfidence is number && data.aiConfidence >= 0 && data.aiConfidence <= 100)) &&
+        (!('aiVerdict' in data) || isValidAiVerdict(data.aiVerdict)) &&
+        (!('aiReasoning' in data) || (data.aiReasoning is string && data.aiReasoning.size() <= 500)) &&
+        data.submittedByUid is string && data.submittedByUid.size() >= 2 && data.submittedByUid.size() <= 128 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidReport(data) {
+      return data.keys().hasAll([
+          'id', 'targetType', 'reportType', 'details', 'status',
+          'submittedByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'targetType', 'targetId', 'targetLabel', 'reportType',
+          'details', 'suggestedFareEgp', 'status', 'reviewNote',
+          'submittedByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.targetType in ['route', 'place', 'general'] &&
+        (!('targetId' in data) || (data.targetId is string && data.targetId.size() <= 128)) &&
+        (!('targetLabel' in data) || (data.targetLabel is string && data.targetLabel.size() <= 200)) &&
+        isValidReportType(data.reportType) &&
+        data.details is string && data.details.size() >= 5 && data.details.size() <= 1000 &&
+        (!('suggestedFareEgp' in data) || (data.suggestedFareEgp is number && data.suggestedFareEgp >= 1 && data.suggestedFareEgp <= 500)) &&
+        isValidReportStatus(data.status) &&
+        (!('reviewNote' in data) || (data.reviewNote is string && data.reviewNote.size() <= 500)) &&
+        data.submittedByUid is string && data.submittedByUid.size() >= 2 && data.submittedByUid.size() <= 128 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'displayName', 'email', 'addedByUid', 'createdAt']) &&
+        isValidId(data.uid) &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 180 &&
+        (!('addedByUid' in data) || (data.addedByUid is string && data.addedByUid.size() <= 128)) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidPublicStats(data) {
+      return data.keys().hasAll([
+          'verifiedPlacesCount', 'publishedRoutesCount',
+          'pendingSuggestionsCount', 'fieldCheckCount',
+          'initialSeedApplied', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'verifiedPlacesCount', 'publishedRoutesCount',
+          'pendingSuggestionsCount', 'fieldCheckCount',
+          'initialSeedApplied', 'updatedAt'
+        ]) &&
+        data.verifiedPlacesCount is number && data.verifiedPlacesCount >= 0 &&
+        data.publishedRoutesCount is number && data.publishedRoutesCount >= 0 &&
+        data.pendingSuggestionsCount is number && data.pendingSuggestionsCount >= 0 &&
+        data.fieldCheckCount is number && data.fieldCheckCount >= 0 &&
+        data.initialSeedApplied is bool &&
+        data.updatedAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    match /places/{placeId} {
+      allow get: if isValidId(placeId);
+      allow list: if resource.data.isActive == true || isAdmin();
+      allow create: if isAdmin() && isValidId(placeId) && isValidPlace(incoming()) &&
+        incoming().id == placeId &&
+        incoming().verifiedByUid == request.auth.uid &&
+        incoming().verifiedAt == request.time;
+      allow update: if isAdmin() && isValidId(placeId) && isValidPlace(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'category', 'district', 'landmarkHint', 'lat', 'lng', 'sourceNote', 'isActive']);
+      allow delete: if isAdmin() && isValidId(placeId);
+    }
+
+    match /routes/{routeId} {
+      allow get: if isValidId(routeId);
+      allow list: if resource.data.isActive == true || isAdmin();
+      allow create: if isAdmin() && isValidId(routeId) && isValidRoute(incoming()) &&
+        incoming().id == routeId &&
+        incoming().verifiedByUid == request.auth.uid &&
+        incoming().publishedAt == request.time &&
+        exists(/databases/$(database)/documents/places/$(incoming().originPlaceId)) &&
+        exists(/databases/$(database)/documents/places/$(incoming().destinationPlaceId));
+      allow update: if isAdmin() && isValidId(routeId) && isValidRoute(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'direction', 'originPlaceId', 'destinationPlaceId',
+          'stopIds', 'stopNames', 'fareEgp', 'estimatedMinutes',
+          'vehicleType', 'notes', 'isActive'
+        ]);
+      allow delete: if isAdmin() && isValidId(routeId);
+    }
+
+    match /place_suggestions/{suggestionId} {
+      allow get: if isValidId(suggestionId) && (
+        isAdmin() || (isVerifiedUser() && existing().submittedByUid == request.auth.uid)
+      );
+      allow list: if isAdmin() || (isVerifiedUser() && resource.data.submittedByUid == request.auth.uid);
+      allow create: if isVerifiedUser() && isValidId(suggestionId) && isValidPlaceSuggestion(incoming()) &&
+        incoming().id == suggestionId &&
+        incoming().submittedByUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (
+          (incoming().status == 'pending' && incoming().isInitialSeed == false && !('reviewNote' in incoming())) ||
+          (isAdmin() && incoming().status in ['pending', 'field_check'])
+        );
+      allow update: if isVerifiedUser() && isValidId(suggestionId) && isValidPlaceSuggestion(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().submittedByUid == existing().submittedByUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'category', 'district', 'landmarkHint', 'lat', 'lng', 'status',
+            'sourceReference', 'fieldNotes', 'reviewNote',
+            'aiConfidence', 'aiVerdict', 'aiReasoning', 'updatedAt'
+          ])) ||
+          (
+            existing().submittedByUid == request.auth.uid &&
+            existing().status == 'pending' &&
+            incoming().status == 'pending' &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'name', 'category', 'district', 'landmarkHint', 'lat', 'lng', 'fieldNotes', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isAdmin() && isValidId(suggestionId);
+    }
+
+    match /route_suggestions/{suggestionId} {
+      allow get: if isValidId(suggestionId) && (
+        isAdmin() || (isVerifiedUser() && existing().submittedByUid == request.auth.uid)
+      );
+      allow list: if isAdmin() || (isVerifiedUser() && resource.data.submittedByUid == request.auth.uid);
+      allow create: if isVerifiedUser() && isValidId(suggestionId) && isValidRouteSuggestion(incoming()) &&
+        incoming().id == suggestionId &&
+        incoming().submittedByUid == request.auth.uid &&
+        incoming().status == 'pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        !('reviewNote' in incoming()) &&
+        exists(/databases/$(database)/documents/places/$(incoming().stopIds[0])) &&
+        exists(/databases/$(database)/documents/places/$(incoming().stopIds[incoming().stopIds.size() - 1]));
+      allow update: if isVerifiedUser() && isValidId(suggestionId) && isValidRouteSuggestion(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().submittedByUid == existing().submittedByUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        isAdmin() &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'generatedName', 'generatedDirection', 'stopIds', 'stopNames',
+          'fareEgp', 'estimatedMinutes', 'vehicleType', 'notes',
+          'status', 'reviewNote', 'aiConfidence', 'aiVerdict', 'aiReasoning', 'updatedAt'
+        ]);
+      allow delete: if isAdmin() && isValidId(suggestionId);
+    }
+
+    match /reports/{reportId} {
+      allow get: if isValidId(reportId) && (
+        isAdmin() || (isVerifiedUser() && existing().submittedByUid == request.auth.uid)
+      );
+      allow list: if isAdmin() || (isVerifiedUser() && resource.data.submittedByUid == request.auth.uid);
+      allow create: if isVerifiedUser() && isValidId(reportId) && isValidReport(incoming()) &&
+        incoming().id == reportId &&
+        incoming().submittedByUid == request.auth.uid &&
+        incoming().status == 'open' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        !('reviewNote' in incoming());
+      allow update: if isAdmin() && isValidId(reportId) && isValidReport(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().submittedByUid == existing().submittedByUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'reviewNote', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(reportId);
+    }
+
+    match /admins/{uid} {
+      allow get: if isValidId(uid) && (isAdmin() || (isVerifiedUser() && request.auth.uid == uid));
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidId(uid) && isValidAdminUser(incoming()) &&
+        incoming().uid == uid &&
+        incoming().createdAt == request.time;
+      allow update: if isAdmin() && isValidId(uid) && isValidAdminUser(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email']);
+      allow delete: if isAdmin() && isValidId(uid) && request.auth.uid != uid;
+    }
+
+    match /app_meta/{docId} {
+      allow get: if docId == 'public_stats' || isAdmin();
+      allow list: if false;
+      allow create, update: if isAdmin() && docId == 'public_stats' && isValidPublicStats(incoming()) &&
+        incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+  }
+}
